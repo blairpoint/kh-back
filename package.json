@@ -1,0 +1,30 @@
+{
+  "name": "stripe-sample",
+  "version": "0.0.0",
+  "description": "Full-stack example using Next.js",
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@blairpoint/shared-core": "file:../shared-core",
+    "@stripe/react-stripe-js": "^3.7.0",
+    "@stripe/stripe-js": "^7.3.0",
+    "@tailwindcss/postcss": "^4.3.2",
+    "lucide-react": "^1.24.0",
+    "micro": "^10.0.0",
+    "micro-cors": "0.1.1",
+    "mongoose": "^9.7.4",
+    "next": "15.1.4",
+    "nodemailer": "^9.0.3",
+    "pg": "^8.22.0",
+    "postcss": "^8.5.19",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "stripe": "^17.5.0",
+    "tailwindcss": "^4.3.2"
+  }
+}

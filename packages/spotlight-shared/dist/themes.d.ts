@@ -1,0 +1,35 @@
+export interface AppTheme {
+    id: string;
+    name: string;
+    description: string;
+    outerBg: string;
+    outerText: string;
+    outerSelection: string;
+    navBg: string;
+    navBorder: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+    cardTextMuted: string;
+    cardHeaderBar: string;
+    cardDivider: string;
+    sectionBorder: string;
+    boxBg: string;
+    boxBorder: string;
+    boxText: string;
+    boxTextMuted: string;
+    labelText: string;
+    inputBg: string;
+    inputBorder: string;
+    inputFocus: string;
+    inputText: string;
+    btnBg: string;
+    btnBgHover: string;
+    btnBorder: string;
+    btnText: string;
+    badgeBg: string;
+    badgeText: string;
+    badgeHover: string;
+    highlightText: string;
+}
+export declare const APP_THEMES: Record<string, AppTheme>;
