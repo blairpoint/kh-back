@@ -12,8 +12,7 @@ export async function GET(request) {
     }
 
     const artist = await Artist.findOne({
-      verificationToken: token,
-      tokenExpiry: { $gt: new Date() }
+      verificationToken: token
     });
 
     if (!artist) {
@@ -38,31 +37,32 @@ export async function POST(request) {
     }
 
     const artist = await Artist.findOne({
-      verificationToken: token,
-      tokenExpiry: { $gt: new Date() }
+      verificationToken: token
     });
 
     if (!artist) {
       return NextResponse.json({ error: 'Confirmation link has expired or is invalid.' }, { status: 400 });
     }
 
-    // Generate unique short code for the artist
-    let uniqueCode = '';
-    let isUnique = false;
-    while (!isUnique) {
-      uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const existing = await Artist.findOne({ uniqueCode });
-      if (!existing) {
-        isUnique = true;
+    // Generate unique short code for the artist only if they don't have one (Reset Password flow support)
+    if (!artist.uniqueCode) {
+      let uniqueCode = '';
+      let isUnique = false;
+      while (!isUnique) {
+        uniqueCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const existing = await Artist.findOne({ uniqueCode });
+        if (!existing) {
+          isUnique = true;
+        }
       }
+      artist.uniqueCode = uniqueCode;
     }
 
     artist.password = password;
     artist.artistName = artistName.trim();
-    artist.uniqueCode = uniqueCode;
     artist.isVerified = true;
-    artist.verificationToken = undefined;
-    artist.tokenExpiry = undefined;
+    artist.verificationToken = '';
+    artist.tokenExpiry = null;
     await artist.save();
 
     return NextResponse.json({ 

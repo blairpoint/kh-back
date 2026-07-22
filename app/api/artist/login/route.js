@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, Artist } from '../../../../lib/db';
+import { connectToDatabase, Artist, createSession, hashPassword } from '../../../../lib/db';
 
 export async function POST(request) {
   try {
@@ -35,17 +35,26 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Email not verified. Click the confirmation link in your inbox first.' }, { status: 400 });
     }
 
-    if (artist.password !== password) {
+    if (artist.password !== hashPassword(password)) {
       return NextResponse.json({ error: 'Incorrect password.' }, { status: 400 });
     }
 
+    // Force liveStatus to Offline upon password login
+    artist.liveStatus = 'Offline';
+    artist.activeEvent = null;
+    await artist.save();
+
+    const sessionToken = await createSession(artist.uniqueCode);
     return NextResponse.json({
+      sessionToken,
       artist: {
         uniqueCode: artist.uniqueCode,
         totalTips: artist.totalTips,
         tipCount: artist.tipCount,
         artistName: artist.artistName,
-        email: artist.email
+        email: artist.email,
+        liveStatus: 'Offline',
+        activeEvent: null
       }
     });
 

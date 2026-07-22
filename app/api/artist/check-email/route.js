@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase, Artist } from '../../../../lib/db';
+import { sendVerificationEmail } from '../../../../lib/mail';
+import crypto from 'crypto';
 
 export async function POST(request) {
   try {
     await connectToDatabase();
-    const { email } = await request.json();
+    const { email, triggerReset } = await request.json();
 
     if (!email || !email.includes('@')) {
       return NextResponse.json({ error: 'Please enter a valid email address.' }, { status: 400 });
@@ -19,28 +21,24 @@ export async function POST(request) {
 
     let artist = await Artist.findOne({ email: normalizedEmail });
 
-    if (!artist) {
-      // Create pre-verified account immediately to bypass email confirmation
-      artist = new Artist({
-        email: normalizedEmail,
-        isVerified: true
-      });
+    if (!artist || !artist.artistName || triggerReset === true) {
+      // Create or update artist profile with a unique verification token (Signup/Reset flows)
+      if (!artist) {
+        artist = new Artist({
+          email: normalizedEmail,
+          isVerified: false
+        });
+      }
+
+      const token = crypto.randomBytes(32).toString('hex');
+      artist.verificationToken = token;
+      artist.tokenExpiry = new Date(Date.now() + 3600 * 1000); // 1 hour expiry
       await artist.save();
 
-      return NextResponse.json({ exists: false });
-    }
+      // Dispatch verification email containing the unique setup link
+      await sendVerificationEmail(normalizedEmail, token);
 
-    if (!artist.isVerified) {
-      // Auto-verify any existing unverified accounts
-      artist.isVerified = true;
-      await artist.save();
-      
-      return NextResponse.json({ exists: false });
-    }
-
-    if (!artist.artistName) {
-      // Verified but name not registered yet
-      return NextResponse.json({ exists: false });
+      return NextResponse.json({ exists: !!artist.artistName, emailSent: true });
     }
 
     // Fully registered user

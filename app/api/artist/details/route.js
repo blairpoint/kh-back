@@ -29,7 +29,9 @@ export async function GET(request) {
     return NextResponse.json({
       artistName: artist.artistName,
       totalTips: artist.totalTips,
-      tipCount: artist.tipCount
+      tipCount: artist.tipCount,
+      liveStatus: artist.liveStatus || 'Offline',
+      activeEvent: artist.activeEvent || null
     });
 
   } catch (error) {

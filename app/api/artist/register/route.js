@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase, Artist } from '../../../../lib/db';
+import { connectToDatabase, Artist, createSession, hashPassword } from '../../../../lib/db';
 
 export async function POST(request) {
   try {
@@ -11,17 +11,20 @@ export async function POST(request) {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const artist = await Artist.findOne({ email: normalizedEmail });
+    let artist = await Artist.findOne({ email: normalizedEmail });
 
     if (!artist) {
-      return NextResponse.json({ error: 'Account not found. Please enter your email and click proceed first.' }, { status: 400 });
+      artist = new Artist({
+        email: normalizedEmail,
+        isVerified: true
+      });
     }
 
     if (!artist.isVerified) {
       return NextResponse.json({ error: 'Email not verified. Click the confirmation link in your inbox first.' }, { status: 400 });
     }
 
-    if (artist.password && artist.password !== password) {
+    if (artist.password && artist.password !== hashPassword(password)) {
       return NextResponse.json({ error: 'Password does not match the password set during email confirmation.' }, { status: 400 });
     }
 
@@ -45,13 +48,17 @@ export async function POST(request) {
     artist.uniqueCode = uniqueCode;
     await artist.save();
 
+    const sessionToken = await createSession(artist.uniqueCode);
     return NextResponse.json({
+      sessionToken,
       artist: {
         uniqueCode: artist.uniqueCode,
         totalTips: artist.totalTips,
         tipCount: artist.tipCount,
         artistName: artist.artistName,
-        email: artist.email
+        email: artist.email,
+        liveStatus: artist.liveStatus || 'Offline',
+        activeEvent: artist.activeEvent || null
       }
     });
 

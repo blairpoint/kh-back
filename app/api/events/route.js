@@ -1,23 +1,30 @@
 import { NextResponse } from 'next/server';
-import { connectGlobalDB, GlobalEvent, SpotlightEventModel, Gold4GoldEventModel } from '@blairpoint/shared-core';
+import { getPool } from '../../../lib/db';
 
 export async function GET() {
   try {
-    // Ensure connected to the global db if not already
-    await connectGlobalDB(process.env.MONGODB_URI);
-
-    // Fetch global events from spotlight database as primary directory
-    const events = await SpotlightEventModel.find({}).select('title status');
-    return NextResponse.json(events);
+    const p = getPool();
+    // Fetch active events directly from PostgreSQL event table
+    const res = await p.query(`
+      SELECT id, venue_name as title, starts_at, ends_at 
+      FROM event 
+      WHERE ends_at IS NULL
+    `);
+    
+    return NextResponse.json(res.rows.map(row => ({
+      id: row.id,
+      title: row.title || 'Main Stage',
+      status: 'published'
+    })));
   } catch (error) {
-    console.error('Fetch global events error:', error);
-    return NextResponse.json({ error: 'Failed to fetch global events directory.' }, { status: 500 });
+    console.error('Fetch active events error:', error);
+    return NextResponse.json({ error: 'Failed to fetch active events.' }, { status: 500 });
   }
 }
 
 export async function POST(request) {
   try {
-    await connectGlobalDB(process.env.MONGODB_URI);
+    const p = getPool();
     const { title } = await request.json();
 
     if (!title || !title.trim()) {
@@ -26,42 +33,16 @@ export async function POST(request) {
 
     const eventTitle = title.trim();
 
-    // 1. Save locally to Kohartist (GlobalEvent model)
-    try {
-      await GlobalEvent.findOneAndUpdate(
-        { title: eventTitle },
-        { title: eventTitle, status: 'published', sourceApp: 'kohartist' },
-        { upsert: true }
-      );
-    } catch (err) {
-      console.error('Error saving local global event:', err);
-    }
-
-    // 2. Sync to Spotlight database (SpotlightEventModel)
-    try {
-      await SpotlightEventModel.findOneAndUpdate(
-        { title: eventTitle },
-        { title: eventTitle, status: 'published', sourceApp: 'kohartist' },
-        { upsert: true }
-      );
-    } catch (err) {
-      console.error('Error syncing to Spotlight:', err);
-    }
-
-    // 3. Sync to Gold4Gold database (Gold4GoldEventModel)
-    try {
-      await Gold4GoldEventModel.findOneAndUpdate(
-        { title: eventTitle },
-        { title: eventTitle, status: 'published', sourceApp: 'kohartist' },
-        { upsert: true }
-      );
-    } catch (err) {
-      console.error('Error syncing to Gold4Gold:', err);
-    }
+    // Insert new event directly into PostgreSQL
+    await p.query(`
+      INSERT INTO event (venue_name, starts_at, latitude, longitude)
+      VALUES ($1, NOW(), 0.0, 0.0)
+      ON CONFLICT DO NOTHING
+    `, [eventTitle]);
 
     return NextResponse.json({ success: true, title: eventTitle });
   } catch (error) {
-    console.error('Create global event error:', error);
+    console.error('Create event error:', error);
     return NextResponse.json({ error: 'Failed to create new event.' }, { status: 500 });
   }
 }
